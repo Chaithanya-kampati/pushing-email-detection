@@ -1,0 +1,111 @@
+import pandas as pd
+
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+
+# 1. Load the dataset
+data = pd.read_csv("emails.csv")
+
+# 2. Convert labels into numbers
+data["label"] = data["label"].map({
+    "Safe": 0,
+    "Phishing": 1
+})
+
+# 3. Separate email text and labels
+X = data["email"]
+y = data["label"]
+
+# 4. Split the dataset into training and testing data
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.2,
+    random_state=42,
+    stratify=y
+)
+
+# 5. Convert email text into numerical features
+vectorizer = TfidfVectorizer(
+    lowercase=True,
+    stop_words="english"
+)
+
+X_train_tfidf = vectorizer.fit_transform(X_train)
+X_test_tfidf = vectorizer.transform(X_test)
+
+# 6. Create the Machine Learning model
+model = LogisticRegression()
+
+# 7. Train the model
+model.fit(X_train_tfidf, y_train)
+
+# 8. Make predictions
+y_pred = model.predict(X_test_tfidf)
+
+# 9. Calculate accuracy
+accuracy = accuracy_score(y_test, y_pred)
+
+print("===================================")
+print("PHISHING EMAIL DETECTION MODEL")
+print("===================================")
+
+print(f"Accuracy: {accuracy * 100:.2f}%")
+
+# 10. Show classification report
+print("\nClassification Report:")
+print(classification_report(
+    y_test,
+    y_pred,
+    target_names=["Safe", "Phishing"],
+    zero_division=0
+))
+
+# 11. Create confusion matrix
+cm = confusion_matrix(y_test, y_pred)
+
+plt.figure(figsize=(6, 5))
+
+sns.heatmap(
+    cm,
+    annot=True,
+    fmt="d",
+    cmap="Blues",
+    xticklabels=["Safe", "Phishing"],
+    yticklabels=["Safe", "Phishing"]
+)
+
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+plt.title("Phishing Email Detection - Confusion Matrix")
+
+plt.show()
+
+
+# 12. Test the model with new emails
+test_emails = [
+    "Your bank account has been suspended. Click this link immediately to verify your password.",
+    "Hello, please find the meeting schedule attached. Thank you."
+]
+
+test_features = vectorizer.transform(test_emails)
+
+predictions = model.predict(test_features)
+
+print("\nNew Email Predictions:")
+
+for email, prediction in zip(test_emails, predictions):
+
+    if prediction == 1:
+        result = "Phishing"
+    else:
+        result = "Safe"
+
+    print("\nEmail:", email)
+    print("Prediction:", result)
